@@ -36,6 +36,10 @@ Tapo C320WS (RTSP)  →  Frigate (detección de personas, grabación)  →  MQTT
   compartido con Immich). Tailscale instalado: `100.83.112.106`.
 - Proyecto en `/srv/apps/sistema-control-hogar` (misma convención que `/srv/apps/immich`);
   grabaciones en `/srv/apps/sistema-control-hogar/media`.
+- El servidor está en `Etc/UTC` (no cambiarlo: lo comparten otros servicios). Frigate muestra
+  la hora en la zona del navegador y HA tiene `TZ` propio; los logs y carpetas van en UTC.
+- Clave admin de Frigate perdida → `auth.reset_admin_password: true` en `config.yml`,
+  reiniciar, que el dueño la lea del log, y **quitar el flag** (si queda, cambia en cada reinicio).
 - Acceso desde la PC de desarrollo con PuTTY:
   `plink -batch -i E:\Development\nzsitsolutions\keys\nzs-pk.ppk nzs@192.168.50.87 "<cmd>"`
   (copiar archivos con `pscp`). **No leer la clave ni datos ajenos al proyecto en el servidor**
@@ -62,8 +66,9 @@ Tapo C320WS (RTSP)  →  Frigate (detección de personas, grabación)  →  MQTT
 
 - Tapo C320WS. Credenciales = "Cuenta de cámara" creada en la app Tapo
   (Configuración avanzada → Cuenta de cámara), **no** la cuenta TP-Link.
-- IP `192.168.50.94` (nombre en la red: "IPC", MAC `c0:3a:55:c7:ae:a5`). Conviene reservarla
-  en el DHCP del router para que no cambie.
+- IP `192.168.50.94` (nombre en la red: "IPC", MAC `c0:3a:55:c7:ae:a5`), reservada en el DHCP
+  del router (ASUS RT-AX57, `192.168.50.1`). El servidor (`00:16:96:ee:51:ef`) también tiene
+  reservada la `192.168.50.87`.
 - `rtsp://USER:PASS@IP:554/stream1` → 2560x1440 H.264 15 fps + audio PCMA, rol `record`.
 - `rtsp://USER:PASS@IP:554/stream2` → 640x360 H.264 15 fps + audio PCMA, rol `detect` (verificado).
 - Tapo activa RTSP recién cuando existe la "Cuenta de cámara". El usuario **no** puede ser un mail.
@@ -85,13 +90,16 @@ Tapo C320WS (RTSP)  →  Frigate (detección de personas, grabación)  →  MQTT
 - [x] **6. Levantar**: los 3 contenedores corren; Frigate valida la config y carga OpenVINO CPU.
       Clave admin de Frigate: la consulta el dueño con `docker logs frigate | grep -i password`
       (no leerla). UI en `https://192.168.50.87:8971`.
-- [ ] **7. Validar**: inferencia OpenVINO CPU ≈ 51 ms (OK para 1 cámara a 5 fps), VAAPI activo
-      (el 0 % de GPU en métricas es una limitación del monitor con AMD), grabación escribiendo
-      segmentos. **Falta**: caminar frente a la cámara y ver alerta `person` en Review / MQTT.
+- [x] **7. Validar**: inferencia OpenVINO CPU ≈ 52 ms (≈55 % de capacidad con 1 cámara; para
+      sumar cámaras evaluar YOLOv9-t), VAAPI activo (el 0 % de GPU en métricas es una limitación
+      del monitor con AMD). Alertas `person` en Review con score 0.88–0.94, snapshot y clip.
+      Prueba hecha con la cámara sobre el escritorio (todavía no está en su ubicación final).
 - [ ] 8. Zonas y máscaras sobre la imagen real (excluir vereda, árboles, etc.).
 - [ ] 9. Home Assistant (config y automatizaciones ya escritas; falta hacerlo en el servidor):
-      1. Onboarding en `http://IP_SERVIDOR:8123`.
-      2. Integración **MQTT**: broker `mosquitto`, puerto 1883, usuario `homeassistant` + `MQTT_HA_PASSWORD`.
+      1. ~~Onboarding en `http://192.168.50.87:8123`~~ ✔
+      2. ~~Integración **MQTT**: broker `mosquitto`, puerto 1883, usuario `homeassistant` +
+         `MQTT_HA_PASSWORD`~~ ✔ (sensor `binary_sensor.frigate_en_linea` creado).
+         Si falla con "not authorised", es la clave mal pegada en el formulario.
       3. En Frigate (Settings → Users) crear el usuario `homeassistant` con rol `viewer`
          (si alguna función falla, probar con `admin`).
       4. HACS: `docker exec -it homeassistant bash -c "wget -O - https://get.hacs.xyz | bash -"`,
