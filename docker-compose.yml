@@ -1,0 +1,38 @@
+services:
+  frigate:
+    container_name: frigate
+    image: ghcr.io/blakeblackshear/frigate:stable
+    # GPU Nvidia: usar :stable-tensorrt  |  GPU AMD: usar :stable-rocm
+    restart: unless-stopped
+    stop_grace_period: 30s
+    shm_size: "512mb"            # suficiente para ~4 cámaras con detect 640x360
+    env_file: .env
+    devices:
+      # GPU Intel integrada / Arc (OpenVINO + decodificación por hardware).
+      # Si no tenés GPU Intel, comentá esta línea.
+      - /dev/dri/renderD128:/dev/dri/renderD128
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./config:/config
+      - ${FRIGATE_MEDIA_PATH}:/media/frigate
+      - type: tmpfs              # cache de segmentos en RAM (no gasta el disco)
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+    ports:
+      - "8971:8971"              # UI web con login (no expongas el 5000)
+      - "8554:8554"              # restream RTSP
+      - "8555:8555/tcp"          # WebRTC (vista en vivo)
+      - "8555:8555/udp"
+    depends_on:
+      - mosquitto
+
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/data:/mosquitto/data
+    ports:
+      - "1883:1883"              # para que Home Assistant reciba los eventos

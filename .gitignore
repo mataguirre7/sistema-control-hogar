@@ -1,0 +1,5 @@
+.env
+config/model_cache/
+config/*.db
+config/*.db-*
+mosquitto/data/

@@ -1,0 +1,97 @@
+# Frigate 0.18 — Tapo C320WS + detección de personas con OpenVINO (GPU Intel)
+
+mqtt:
+  enabled: true
+  host: mosquitto          # nombre del servicio en docker-compose
+  port: 1883
+
+# ---------- Detector de IA ----------
+detectors:
+  ov:
+    type: openvino
+    device: GPU            # GPU Intel integrada. Sin GPU Intel: CPU
+
+model:
+  model_type: yolo-generic
+  path: /config/model_cache/yolov9-s-320.onnx   # lo genera build-model.sh
+  labelmap_path: /labelmap/coco-80.txt
+  width: 320
+  height: 320
+  input_tensor: nchw
+  input_pixel_format: rgb
+  input_dtype: float
+
+# Decodificación por hardware (Intel). Sin GPU Intel: borrá estas 2 líneas
+ffmpeg:
+  hwaccel_args: preset-vaapi
+
+# ---------- Streams de la cámara (credenciales desde .env) ----------
+go2rtc:
+  streams:
+    patio:
+      - rtsp://{FRIGATE_TAPO_USER}:{FRIGATE_TAPO_PASS}@192.168.1.50:554/stream1
+    patio_sub:
+      - rtsp://{FRIGATE_TAPO_USER}:{FRIGATE_TAPO_PASS}@192.168.1.50:554/stream2
+
+# ---------- Qué detectar ----------
+objects:
+  track:
+    - person
+  filters:
+    person:
+      min_score: 0.5
+      threshold: 0.75      # sube si tenés falsos positivos
+
+# ---------- Grabación ----------
+record:
+  enabled: true
+  continuous:
+    days: 0                # sin grabación 24/7 (subilo si querés)
+  motion:
+    days: 3
+  alerts:
+    pre_capture: 10
+    post_capture: 10
+    retain:
+      days: 30
+      mode: all
+  detections:
+    retain:
+      days: 14
+      mode: motion
+
+snapshots:
+  enabled: true
+  bounding_box: true
+  retain:
+    default: 30
+
+# Solo personas generan "alertas" (lo que dispara notificaciones en HA)
+review:
+  alerts:
+    labels:
+      - person
+
+# ---------- Cámaras ----------
+cameras:
+  patio:                   # renombrala a gusto (frente, fondo, etc.)
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://127.0.0.1:8554/patio        # 2K para grabar
+          input_args: preset-rtsp-restream
+          roles:
+            - record
+        - path: rtsp://127.0.0.1:8554/patio_sub    # baja resolución para la IA
+          input_args: preset-rtsp-restream
+          roles:
+            - detect
+    detect:
+      enabled: true
+      width: 640
+      height: 360
+      fps: 5
+    live:
+      streams:
+        Principal: patio
+        Liviano: patio_sub
