@@ -1,0 +1,10 @@
+# Home Assistant (contenedor). MQTT y Frigate se agregan desde la UI:
+# Configuración → Dispositivos y servicios (ver CLAUDE.md, paso 9).
+default_config:
+
+homeassistant:
+  packages: !include_dir_named packages   # lógica de seguridad en packages/
+
+automation: !include automations.yaml     # automatizaciones creadas desde la UI
+script: !include scripts.yaml
+scene: !include scenes.yaml

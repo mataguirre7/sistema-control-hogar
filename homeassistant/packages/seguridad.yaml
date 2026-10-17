@@ -1,0 +1,83 @@
+# Seguridad: modo "casa vacía" + aviso al dueño con foto cuando Frigate abre
+# una alerta (solo personas, ver review.alerts en config/config.yml).
+# Paso 10 (sensor de apertura, sirena, llamadas) se suma en este archivo.
+
+input_boolean:
+  casa_vacia:
+    name: Casa vacía
+    icon: mdi:shield-home
+
+# Destino de los avisos. Reemplazar "cambiar" por el nombre del celular que
+# registra la app HA (Herramientas → Acciones → buscar "notify.mobile_app_").
+notify:
+  - platform: group
+    name: dueno
+    services:
+      - action: mobile_app_cambiar
+
+mqtt:
+  binary_sensor:
+    - name: Frigate en línea
+      unique_id: frigate_en_linea
+      state_topic: frigate/available
+      payload_on: online
+      payload_off: offline
+      device_class: connectivity
+
+automation:
+  - id: seguridad_persona_casa_vacia
+    alias: "Seguridad: persona detectada con la casa vacía"
+    mode: parallel
+    max: 10
+    triggers:
+      - trigger: mqtt
+        topic: frigate/reviews
+    conditions:
+      # Avisar una sola vez por review: cuando nace como alerta o pasa a serlo
+      - condition: template
+        value_template: >-
+          {% set p = trigger.payload_json %}
+          {{ p.after.severity == 'alert'
+             and (p.type == 'new' or p.before.severity != 'alert') }}
+      - condition: state
+        entity_id: input_boolean.casa_vacia
+        state: "on"
+    actions:
+      - variables:
+          review: "{{ trigger.payload_json.after }}"
+          evento: "{{ review.data.detections | first }}"
+      - action: notify.dueno
+        data:
+          title: "Persona en {{ review.camera }}"
+          message: >-
+            Frigate detectó una persona a las
+            {{ review.start_time | timestamp_custom('%H:%M:%S') }}.
+            Revisá el video antes de llamar al 911.
+          data:
+            image: "/api/frigate/notifications/{{ evento }}/snapshot.jpg"
+            tag: "{{ review.id }}"
+            group: seguridad
+            # Android: saltear modo ahorro / no molestar
+            priority: high
+            ttl: 0
+            channel: seguridad
+            # iOS
+            push:
+              interruption-level: time-sensitive
+
+  - id: seguridad_frigate_caido
+    alias: "Seguridad: Frigate fuera de línea"
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.frigate_en_linea
+        to: "off"
+        for: "00:05:00"
+    actions:
+      - action: notify.dueno
+        data:
+          title: "Frigate fuera de línea"
+          message: "Hace 5 minutos que Frigate no responde: las cámaras no están vigilando."
+          data:
+            priority: high
+            ttl: 0
+            channel: seguridad

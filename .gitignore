@@ -3,3 +3,12 @@ config/model_cache/
 config/*.db
 config/*.db-*
 mosquitto/data/
+mosquitto/passwd
+
+# Home Assistant: se versiona solo la config YAML, no el estado
+homeassistant/*
+!homeassistant/configuration.yaml
+!homeassistant/automations.yaml
+!homeassistant/scripts.yaml
+!homeassistant/scenes.yaml
+!homeassistant/packages/

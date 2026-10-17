@@ -1,15 +1,17 @@
-# Frigate 0.18 — Tapo C320WS + detección de personas con OpenVINO (GPU Intel)
+# Frigate 0.18 — Tapo C320WS + detección de personas con OpenVINO (CPU AMD Ryzen 5 3500U)
 
 mqtt:
   enabled: true
   host: mosquitto          # nombre del servicio en docker-compose
   port: 1883
+  user: "{FRIGATE_MQTT_USER}"
+  password: "{FRIGATE_MQTT_PASSWORD}"
 
 # ---------- Detector de IA ----------
 detectors:
   ov:
     type: openvino
-    device: GPU            # GPU Intel integrada. Sin GPU Intel: CPU
+    device: CPU            # OpenVINO en GPU solo funciona con Intel; el servidor es AMD
 
 model:
   model_type: yolo-generic
@@ -21,7 +23,8 @@ model:
   input_pixel_format: rgb
   input_dtype: float
 
-# Decodificación por hardware (Intel). Sin GPU Intel: borrá estas 2 líneas
+# Decodificación por hardware con la Radeon Vega integrada
+# (requiere LIBVA_DRIVER_NAME=radeonsi en el compose)
 ffmpeg:
   hwaccel_args: preset-vaapi
 
@@ -29,9 +32,14 @@ ffmpeg:
 go2rtc:
   streams:
     patio:
-      - rtsp://{FRIGATE_TAPO_USER}:{FRIGATE_TAPO_PASS}@192.168.1.50:554/stream1
+      - rtsp://{FRIGATE_TAPO_USER}:{FRIGATE_TAPO_PASS}@192.168.50.94:554/stream1
     patio_sub:
-      - rtsp://{FRIGATE_TAPO_USER}:{FRIGATE_TAPO_PASS}@192.168.1.50:554/stream2
+      - rtsp://{FRIGATE_TAPO_USER}:{FRIGATE_TAPO_PASS}@192.168.50.94:554/stream2
+  webrtc:
+    candidates:
+      - 192.168.50.87:8555       # LAN del servidor
+      - 100.83.112.106:8555      # Tailscale (acceso remoto)
+      - stun:8555
 
 # ---------- Qué detectar ----------
 objects:
