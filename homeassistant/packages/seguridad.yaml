@@ -7,13 +7,12 @@ input_boolean:
     name: Casa vacía
     icon: mdi:shield-home
 
-# Destino de los avisos. Reemplazar "cambiar" por el nombre del celular que
-# registra la app HA (Herramientas → Acciones → buscar "notify.mobile_app_").
+# Destino de los avisos: celulares con la app HA (nombre = notify.mobile_app_<equipo>).
 notify:
   - platform: group
     name: dueno
     services:
-      - action: mobile_app_cambiar
+      - action: mobile_app_iphone   # iPhone del dueño
 
 mqtt:
   binary_sensor:

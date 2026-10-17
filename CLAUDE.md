@@ -106,7 +106,8 @@ Tapo C320WS (RTSP)  →  Frigate (detección de personas, grabación)  →  MQTT
          reiniciar HA, agregar HACS desde la UI e instalar **Frigate**.
       5. Integración **Frigate**: URL `https://frigate:8971`, "Validate SSL" desactivado,
          modo "Frigate login" con el usuario del punto 3.
-      6. App HA en el celular → reemplazar `mobile_app_cambiar` en `packages/seguridad.yaml`.
+      6. ~~App HA en el celular~~ ✔ iPhone (iOS) → `notify.mobile_app_iphone` en el grupo `dueno`.
+         Usuario HA: `faguirre`. Clave olvidada → `--script auth change_password` con HA frenado.
       7. Activar "Casa vacía", caminar frente a la cámara y verificar el aviso con foto.
 - [ ] 10. Lógica de intrusión: persona detectada **y** sensor de apertura Zigbee → sirena + llamada
        al dueño y contactos (p. ej. Twilio). Modo "casa vacía" según presencia.
